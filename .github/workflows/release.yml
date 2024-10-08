@@ -1,83 +1,22 @@
-name: Release Tests
-
-on:
-  release:
-    types: [ 'published' ]
-
+# This workflow will build the JAR with Gradle and create a new release with it.
+name: Build JAR
+on: [push]
 permissions:
-  contents: read
-  checks: write
-
-
+  actions: read
+  contents: write
 jobs:
   build:
-    name: 'Publish Release'
     runs-on: ubuntu-latest
     steps:
-      - name: 'Setup JDK 21 📦'
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
-      - name: 'Setup Gradle 8.8 🏗️'
-        uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v3
+      - run: ./gradlew build
+      - run: cp target/HuskSync-Paper-*.jar target/husksync.jar
+      - uses: softprops/action-gh-release@v2
         with:
-          gradle-version: '8.8'
-      - name: '[Current - 1.21.1] Checkout for CI 🛎️'
-        uses: actions/checkout@v4
-        with:
-          path: '1_21_1'
-      - name: '[LTS - 1.20.1] Checkout for CI 🛎️'
-        uses: actions/checkout@v4
-        with:
-          ref: 'minecraft/1.20.1'
-          path: '1_20_1'
-        env:
-          RELEASES_MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
-          RELEASES_MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
-      - name: '[Current - 1.21.1] Build 🛎️'
-        run: |
-          mkdir target
-          cd 1_21_1
-          ./gradlew clean build publish -Dforce-hide-version-meta=1
-          cp -rf target/* ../target/
-          cd ..
-      - name: '[LTS - 1.20.1] Build 🛎️'
-        run: |
-          cd 1_20_1
-          ./gradlew clean build publish -Dforce-hide-version-meta=1
-          cp -rf target/* ../target/
-          cd ..
-      - name: 'Publish Test Report 📊'
-        uses: mikepenz/action-junit-report@v4
-        if: success() || failure() # Continue on failure
-        with:
-          report_paths: '**/build/test-results/test/TEST-*.xml'
-      - name: 'Publish to William278.net 🚀'
-        uses: WiIIiam278/bones-publish-action@v1
-        with:
-          api-key: ${{ secrets.BONES_API_KEY }}
-          project: 'husksync'
-          channel: 'release'
-          version: ${{ github.event.release.tag_name }}
-          changelog: ${{ github.event.release.body }}
-          distro-names: |
-            paper-1.21.1
-            fabric-1.21.1
-            paper-1.20.1
-            fabric-1.20.1
-          distro-groups: |
-            paper
-            fabric
-            paper
-            fabric
-          distro-descriptions: |
-            Paper 1.21.1
-            Fabric 1.21.1
-            Paper 1.20.1
-            Fabric 1.20.1
-          files: |
-            target/HuskSync-Paper-${{ github.event.release.tag_name }}+mc.1.21.1.jar
-            target/HuskSync-Fabric-${{ github.event.release.tag_name }}+mc.1.21.1.jar
-            target/HuskSync-Paper-${{ github.event.release.tag_name }}+mc.1.20.1.jar
-            target/HuskSync-Fabric-${{ github.event.release.tag_name }}+mc.1.20.1.jar
+          tag_name: v${{github.run_number}}
+          files: target/husksync.jar
